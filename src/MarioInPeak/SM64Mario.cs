@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using UnityEngine;
 using LibSM64;
-using SM64Mod;
+//using SM64Mod;
 using System;
 
 
@@ -10,7 +10,7 @@ namespace LibSM64
     public class SM64Mario : MonoBehaviour
     {
         Material material = null;
-        public static SM64Plugin Instance;
+        public static Plugin Instance;
         SM64InputProvider inputProvider;
 
         Vector3[][] positionBuffers;
@@ -43,10 +43,10 @@ namespace LibSM64
 
             if (marioId == -1)
             {
-                SM64Plugin.Logger.LogMessage($"Failed to spawn Mario at {-initPos.x},{initPos.y},{initPos.z}");
+                Plugin.Logger.LogMessage($"Failed to spawn Mario at {-initPos.x},{initPos.y},{initPos.z}");
                 throw new System.Exception($"Failed to spawn Mario at {-initPos.x},{initPos.y},{initPos.z}");
             }
-            SM64Plugin.Logger.LogMessage($"Spawned Mario {marioId} at {-initPos.x},{initPos.y},{initPos.z}");
+            Plugin.Logger.LogMessage($"Spawned Mario {marioId} at {-initPos.x},{initPos.y},{initPos.z}");
 
             inputProvider = GetComponent<SM64InputProvider>();
             if (inputProvider == null)
@@ -66,7 +66,7 @@ namespace LibSM64
             marioRendererObject.transform.localScale = new Vector3( -1, 1, 1 ) / Interop.SCALE_FACTOR;
             marioRendererObject.transform.localPosition = Vector3.zero;
 
-            SM64Plugin.Logger.LogMessage("new vectors");
+            Plugin.Logger.LogMessage("new vectors");
             lerpPositionBuffer = new Vector3[3 * Interop.SM64_GEO_MAX_TRIANGLES];
             lerpNormalBuffer = new Vector3[3 * Interop.SM64_GEO_MAX_TRIANGLES];
             positionBuffers = new Vector3[][] { new Vector3[3 * Interop.SM64_GEO_MAX_TRIANGLES], new Vector3[3 * Interop.SM64_GEO_MAX_TRIANGLES] };
@@ -85,7 +85,7 @@ namespace LibSM64
 
         void OnDisable()
         {
-            SM64Plugin.Logger.LogMessage($"Disabled Mario {marioId}");
+            Plugin.Logger.LogMessage($"Disabled Mario {marioId}");
 
             if ( marioRendererObject != null )
             {

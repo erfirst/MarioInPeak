@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using SM64Mod;
+//using SM64Mod;
 using System.Linq;
 
 namespace LibSM64
@@ -24,7 +24,7 @@ namespace LibSM64
 
         void OnEnable()
         {
-            SM64Plugin.Instance.RegisterSurfaceObject(this);
+            Plugin.Instance.RegisterSurfaceObject(this);
 
             _position = transform.position;
             _rotation = transform.rotation;
@@ -42,7 +42,7 @@ namespace LibSM64
         {
             if( Interop.isGlobalInit )
             {
-                SM64Plugin.Instance.UnregisterSurfaceObject(this);
+                Plugin.Instance.UnregisterSurfaceObject(this);
                 Interop.SurfaceObjectDelete( _surfaceObjectId );
             }
         }

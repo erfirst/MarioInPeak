@@ -9,9 +9,9 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MarioInPeak
+namespace LibSM64
 {
-    [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
+    [BepInPlugin("com.github.erfirst.MarioInPeak", "MarioInPeak", "1.0.0")]
     public class Plugin : BaseUnityPlugin
     {
         public static Plugin Instance { get; private set; }
@@ -25,7 +25,7 @@ namespace MarioInPeak
             Instance = this;
             Logger = base.Logger;
 
-            Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+            Logger.LogInfo($"Mario64 is loaded!");
             Logger.LogDebug("Subscribing to scene events");
 
             SceneManager.sceneLoaded += OnSceneLoaded;

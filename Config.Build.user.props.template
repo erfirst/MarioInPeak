@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <!-- Set if the default steam game install directory doesn't work. -->
-    <!-- <PeakGameRootDir></PeakGameRootDir> -->
+    <PeakGameRootDir>C:\Program Files (x86)\Steam\steamapps\common\PEAK</PeakGameRootDir>
     <!-- Set if your BepInEx/plugins/ directory isn't in the game files. -->
-    <!-- <PeakPluginsDir></PeakPluginsDir> -->
+    <PeakPluginsDir>C:\Users\erfir\AppData\Roaming\Thunderstore Mod Manager\DataFolder\PEAK\profiles\dev\BepInEx\plugins</PeakPluginsDir>
   </PropertyGroup>
 
   <Target Name="DeployFiles" AfterTargets="Build">

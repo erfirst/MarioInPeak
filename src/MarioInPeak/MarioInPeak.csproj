@@ -10,7 +10,12 @@
     <!-- This is the version number of your mod. -->
     <Version>0.1.0</Version>
   </PropertyGroup>
-
+  
+<ItemGroup>
+  <Reference Include="sm64-win64">
+    <HintPath>..\..\lib\sm64-win64.dll</HintPath>
+  </Reference>
+</ItemGroup>
   <!--
   How to include thunderstore mods as dependencies via nuget
 

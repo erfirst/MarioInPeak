@@ -1,11 +1,30 @@
 using UnityEngine;
 using System.Runtime.InteropServices;
 using System;
+using System.IO;
 
 namespace LibSM64
 {
     public static class Interop
     {
+        const string NATIVE_LIB = "sm64-win64";
+
+        static void LogInfo(string message)
+        {
+            if (Plugin.Logger != null)
+                Plugin.Logger.LogInfo($"[Interop] {message}");
+            else
+                Debug.Log($"[Interop] {message}");
+        }
+
+        static void LogError(string message)
+        {
+            if (Plugin.Logger != null)
+                Plugin.Logger.LogError($"[Interop] {message}");
+            else
+                Debug.LogError($"[Interop] {message}");
+        }
+
         public const float SCALE_FACTOR = 150.0f;
 
         public const int SM64_TEXTURE_WIDTH  = 64 * 16;
@@ -161,109 +180,109 @@ namespace LibSM64
             public IntPtr surfaces;
         }
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_global_init( IntPtr rom, IntPtr outTexture );
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_global_terminate();
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_audio_init( IntPtr rom );
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern uint sm64_audio_tick(uint numQueuedSamples, uint numDesiredSamples, short[] audio_buffer);
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_static_surfaces_load( SM64Surface[] surfaces, ulong numSurfaces );
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern int sm64_mario_create( float marioX, float marioY, float marioZ );
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_mario_tick( int marioId, ref SM64MarioInputs inputs, ref SM64MarioState outState, ref SM64MarioGeometryBuffers outBuffers );
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_mario_delete( int marioId );
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_action(int marioId, uint action);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_action_arg(int marioId, uint action, uint actionArg);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_animation(int marioId, int animID);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_anim_frame(int marioId, short animFrame);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_state(int marioId, uint flags);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_position(int marioId, float x, float y, float z);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_angle(int marioId, float x, float y, float z);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_faceangle(int marioId, float y);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_velocity(int marioId, float x, float y, float z);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_forward_velocity(int marioId, float vel);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_invincibility(int marioId, short timer);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_water_level(int marioId, int level);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_gas_level(int marioId, int level);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_mario_health(int marioId, ushort health);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_mario_take_damage(int marioId, uint damage, uint subtype, float x, float y, float z);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_mario_heal(int marioId, byte healCounter);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_mario_kill(int marioId);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_mario_interact_cap(int marioId, uint capFlag, ushort capTime, byte playMusic);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_mario_extend_cap(int marioId, ushort capTime);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern bool sm64_mario_attack(int marioId, float x, float y, float z, float hitboxHeight);
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern uint sm64_surface_object_create( ref SM64SurfaceObject surfaceObject );
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_surface_object_move( uint objectId, ref SM64ObjectTransform transform );
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_surface_object_delete( uint objectId );
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern int sm64_surface_find_wall_collision(float[] xPtr, float[] yPtr, float[] zPtr, float offsetY, float radius);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern float sm64_surface_find_floor_height_and_data(float xPos, float yPos, float zPos);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern float sm64_surface_find_floor_height(float x, float y, float z);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern float sm64_surface_find_floor(float xPos, float yPos, float zPos);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern float sm64_surface_find_water_level(float x, float z);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern float sm64_surface_find_poison_gas_level(float x, float z);
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_seq_player_play_sequence(byte player, byte seqId, ushort arg2);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_play_music(byte player, ushort seqArgs, ushort fadeTimer);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_stop_background_music(ushort seqId);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_fadeout_background_music(ushort arg0, ushort fadeOut);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern ushort sm64_get_current_background_music();
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_play_sound(uint soundBits, float[] pos);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_play_sound_global(uint soundBits);
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_set_sound_volume(float vol);
 
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         delegate void DebugPrintFuncDelegate(string str);
 
-        [DllImport("sm64")]
+        [DllImport(NATIVE_LIB)]
         static extern void sm64_register_debug_print_function(IntPtr debugPrintFunction);
 
         static public Texture2D defaultTexture { get; private set; }
@@ -278,39 +297,87 @@ namespace LibSM64
         public static void GlobalInit( byte[] rom )
         {
             //var debugDelegate = new DebugPrintFuncDelegate( debugPrintCallback );
-            var romHandle = GCHandle.Alloc( rom, GCHandleType.Pinned );
-            var textureData = new byte[ 4 * SM64_TEXTURE_WIDTH * SM64_TEXTURE_HEIGHT ];
-            var textureDataHandle = GCHandle.Alloc( textureData, GCHandleType.Pinned );
+            GCHandle romHandle = default;
+            GCHandle textureDataHandle = default;
 
-            sm64_global_init( romHandle.AddrOfPinnedObject(), textureDataHandle.AddrOfPinnedObject());
-            sm64_audio_init( romHandle.AddrOfPinnedObject() );
-            //sm64_register_debug_print_function(Marshal.GetFunctionPointerForDelegate(debugDelegate));
-
-            Color32[] cols = new Color32[ SM64_TEXTURE_WIDTH * SM64_TEXTURE_HEIGHT ];
-            defaultTexture = new Texture2D( SM64_TEXTURE_WIDTH, SM64_TEXTURE_HEIGHT, TextureFormat.RGBA32, false );
-            for (int ix = 0; ix < SM64_TEXTURE_WIDTH; ix++)
+            try
             {
-                for (int iy = 0; iy < SM64_TEXTURE_HEIGHT; iy++)
+                LogInfo($"GlobalInit start. romBytes={(rom == null ? 0 : rom.Length)}");
+
+                if (rom == null || rom.Length == 0)
+                    throw new ArgumentException("ROM buffer is null or empty.", nameof(rom));
+
+                romHandle = GCHandle.Alloc( rom, GCHandleType.Pinned );
+                var textureData = new byte[ 4 * SM64_TEXTURE_WIDTH * SM64_TEXTURE_HEIGHT ];
+                textureDataHandle = GCHandle.Alloc( textureData, GCHandleType.Pinned );
+
+                LogInfo("Calling sm64_global_init...");
+                sm64_global_init( romHandle.AddrOfPinnedObject(), textureDataHandle.AddrOfPinnedObject());
+                LogInfo("sm64_global_init completed.");
+
+                LogInfo("Calling sm64_audio_init...");
+                sm64_audio_init( romHandle.AddrOfPinnedObject() );
+                LogInfo("sm64_audio_init completed.");
+                //sm64_register_debug_print_function(Marshal.GetFunctionPointerForDelegate(debugDelegate));
+
+                LogInfo("Building default texture from libsm64 texture buffer...");
+                Color32[] cols = new Color32[ SM64_TEXTURE_WIDTH * SM64_TEXTURE_HEIGHT ];
+                defaultTexture = new Texture2D( SM64_TEXTURE_WIDTH, SM64_TEXTURE_HEIGHT, TextureFormat.RGBA32, false );
+                for (int ix = 0; ix < SM64_TEXTURE_WIDTH; ix++)
                 {
-                    cols[ix + SM64_TEXTURE_WIDTH * iy] = new Color32(
-                        textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 0],
-                        textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 1],
-                        textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 2],
-                        textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 3]
-                    );
+                    for (int iy = 0; iy < SM64_TEXTURE_HEIGHT; iy++)
+                    {
+                        cols[ix + SM64_TEXTURE_WIDTH * iy] = new Color32(
+                            textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 0],
+                            textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 1],
+                            textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 2],
+                            textureData[4 * (ix + SM64_TEXTURE_WIDTH * iy) + 3]
+                        );
+                    }
+                }
+
+                defaultTexture.SetPixels32(cols);
+                defaultTexture.Apply();
+                LogInfo("Default texture applied.");
+
+                marioTexture = GenerateTexture(defaultColors);
+                LogInfo("Mario texture generated.");
+
+                sm64_play_sound_global(SM64Constants.SOUND_MENU_STAR_SOUND);
+                LogInfo("Startup sound played.");
+
+                isGlobalInit = true;
+                LogInfo("GlobalInit completed successfully.");
+            }
+            catch (DllNotFoundException e)
+            {
+                string cwd = Directory.GetCurrentDirectory();
+                string p1 = Path.Combine(cwd, "sm64-win64.dll");
+                string p2 = Path.Combine(cwd, "sm64.dll");
+                LogError($"GlobalInit failed: {e.GetType().Name}: {e.Message}");
+                LogError($"Native lookup check: {p1} exists={File.Exists(p1)}");
+                LogError($"Native lookup check: {p2} exists={File.Exists(p2)}");
+                throw;
+            }
+            catch (Exception e)
+            {
+                LogError($"GlobalInit failed: {e.GetType().Name}: {e.Message}\n{e.StackTrace}");
+                throw;
+            }
+            finally
+            {
+                if (textureDataHandle.IsAllocated)
+                {
+                    textureDataHandle.Free();
+                    LogInfo("Freed textureDataHandle.");
+                }
+
+                if (romHandle.IsAllocated)
+                {
+                    romHandle.Free();
+                    LogInfo("Freed romHandle.");
                 }
             }
-
-            defaultTexture.SetPixels32(cols);
-            defaultTexture.Apply();
-
-            marioTexture = GenerateTexture(defaultColors);
-
-            romHandle.Free();
-            textureDataHandle.Free();
-
-            sm64_play_sound_global(SM64Constants.SOUND_MENU_STAR_SOUND);
-            isGlobalInit = true;
         }
 
         public static void GlobalTerminate()

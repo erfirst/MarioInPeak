@@ -62,8 +62,9 @@ namespace LibSM64
                     return;
                 }
             }
-
+            Logger.LogMessage("ROM hash verified, initializing SM64 library");
             Interop.GlobalInit(rom);
+            Logger.LogMessage("SM64 library initialized successfully");
         }
         public void OnSceneUnloaded(Scene scene)
         {
@@ -99,9 +100,10 @@ namespace LibSM64
             */
             if (scene.name.StartsWith("Level_"))
             {
+                Logger.LogMessage("Loading SM64 surfaces and spawning Mario");
                 MeshCollider[] meshCols = GameObject.FindObjectsOfType<MeshCollider>();
                 BoxCollider[] boxCols = GameObject.FindObjectsOfType<BoxCollider>();
-
+                Logger.LogMessage($"Found {meshCols.Length} mesh colliders and {boxCols.Length} box colliders in the scene");
                 for (int i = 0; i < meshCols.Length; i++)
                 {
                     MeshCollider c = meshCols[i];
@@ -129,7 +131,7 @@ namespace LibSM64
 
                     surfaceMesh.sharedMesh = mesh;
                 }
-
+                Logger.LogMessage($"Loaded {meshCols.Length} mesh colliders as SM64 surfaces");
                 for (var i = 0; i < boxCols.Length; i++)
                 {
                     BoxCollider c = boxCols[i];
@@ -169,68 +171,127 @@ namespace LibSM64
                     surfaceMesh.sharedMesh = mesh;
                 }
                 RefreshStaticTerrain();
+                Logger.LogMessage($"Loaded {meshCols.Length} mesh colliders and {boxCols.Length} box colliders as SM64 surfaces");
+                StartCoroutine(SpawnMarioWithRetry(10, 2f));
 
-                // "p" is the player object/component in this case.
-                 Character p = Character.localCharacter;
-                // You'll need to get this object yourself
-                if (p != null)
+            }
+            else
+            {
+                Logger.LogMessage("Not spawning Mario in this scene");
+            }
+        }
+        private System.Collections.IEnumerator SpawnMarioWithRetry(int maxAttempts, float delaySeconds)
+        {
+            Logger.LogMessage($"Attempting to spawn Mario (maxAttempts={maxAttempts}, delay={delaySeconds:0.##}s)");
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                if (TrySpawnMario())
                 {
-                    Renderer[] r = p.GetComponentsInChildren<Renderer>();
-                    Material material = null;
-                    for (int i = 0; i < r.Length; i++)
-                    {
-                        Logger.LogMessage($"MAT NAME {i} '{r[i].material.name}' '{r[i].material.shader.name}'");
-
-                        // Make the original player object invisible by forcing the material to not render
-                        r[i].forceRenderingOff = true;
-
-                        // Change this with the shader that you want. You'll have to play around a bit
-                        if (material == null && r[i].material.shader.name.StartsWith("Toony Colors Pro 2"))
-                            material = Material.Instantiate<Material>(r[i].material);
-                    }
-
-                    if (material != null)
-                    {
-                        material.SetTexture("_BaseMap", Interop.marioTexture);
-                        material.SetColor("_BaseColor", Color.white);
-                    }
-
-                    // Uncomment this to create a test SM64 surface at the player's spawn position
-                    /*
-                    Vector3 P = p.transform.position;
-                    P.y -= 2;
-                    GameObject surfaceObj = new GameObject("SM64_SURFACE");
-                    MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
-                    surfaceObj.AddComponent<SM64StaticTerrain>();
-                    Mesh mesh = new Mesh();
-                    mesh.name = "TEST_MESH";
-                    mesh.SetVertices(
-                        new Vector3[]
-                        {
-                            new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x+128,P.y,P.z-128),
-                            new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x-128,P.y,P.z+128),
-                        }
-                    );
-                    mesh.SetTriangles(new int[] { 0, 1, 2, 3, 4, 5 }, 0);
-                    surfaceMesh.sharedMesh = mesh;
-                    RefreshStaticTerrain();
-                    */
-
-                    GameObject marioObj = new GameObject("SM64_MARIO");
-                    marioObj.transform.position = p.transform.position;
-                    Logger.LogMessage($"spawn {p.transform.position.x} {p.transform.position.y} {p.transform.position.z}");
-                    SM64InputGame input = marioObj.AddComponent<SM64InputGame>();
-                    SM64Mario mario = marioObj.AddComponent<SM64Mario>();
-                    if (mario.spawned)
-                    {
-                        mario.SetMaterial(material);
-                        RegisterMario(mario);
-
-                        p.enabled = false;
-                    }
-                    else
-                        Logger.LogMessage("Failed to spawn Mario");
+                    Logger.LogMessage($"Mario spawn succeeded on attempt {attempt}/{maxAttempts}");
+                    yield break;
                 }
+
+                if (attempt < maxAttempts)
+                {
+                    Logger.LogMessage($"Mario spawn failed on attempt {attempt}/{maxAttempts}; retrying in {delaySeconds:0.##}s");
+                    yield return new WaitForSeconds(delaySeconds);
+                }
+            }
+
+            Logger.LogError($"Mario failed to spawn after {maxAttempts} attempts.");
+        }
+
+        private bool TrySpawnMario()
+        {
+            Logger.LogMessage("Gunna spawn mario");
+            // "p" is the player object/component in this case.
+            //  GameObject p = null;
+            //p = GameObject.Find("Player.localPlayer");
+            Character p = Character.localCharacter;
+            if (p != null)
+            {
+                Renderer[] r = p.GetComponentsInChildren<Renderer>();
+                Material material = null;
+                for (int i = 0; i < r.Length; i++)
+                {
+
+
+                    // Hide the original character renderer by hiding that material
+                    r[i].forceRenderingOff = true;
+
+
+                    // Change this with the shader that you want. You'll have to play around a bit
+                    if (material == null && r[i].material.shader.name.StartsWith("Toony Colors Pro 2"))
+                        material = Material.Instantiate<Material>(r[i].material);
+                }
+
+                // Possibly hides character?
+                /* 
+                SkinnedMeshRenderer smr = p.refs.mainRenderer;
+                if (smr != null)
+                {
+                    smr.forceRenderingOff = true;
+                    material = Material.Instantiate(smr.material);
+                    material.SetTexture("_BaseMap", Interop.marioTexture);
+                    material.SetColor("_BaseColor", Color.white);
+                }
+                */
+
+                if (material == null)
+                {
+                    Logger.LogMessage("Couldn't find a material to use for Mario, using default material");
+                    material = new Material(Shader.Find("Standard"));
+                    material.SetTexture("_BaseMap", Interop.marioTexture);
+                    material.SetColor("_BaseColor", Color.white);
+                }
+
+
+                // Uncomment this to create a test SM64 surface at the player's spawn position
+                /*
+                Vector3 P = p.transform.position;
+                P.y -= 2;
+                GameObject surfaceObj = new GameObject("SM64_SURFACE");
+                MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
+                surfaceObj.AddComponent<SM64StaticTerrain>();
+                Mesh mesh = new Mesh();
+                mesh.name = "TEST_MESH";
+                mesh.SetVertices(
+                    new Vector3[]
+                    {
+                        new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x+128,P.y,P.z-128),
+                        new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x-128,P.y,P.z+128),
+                    }
+                );
+                mesh.SetTriangles(new int[] { 0, 1, 2, 3, 4, 5 }, 0);
+                surfaceMesh.sharedMesh = mesh;
+                RefreshStaticTerrain();
+                */
+
+                GameObject marioObj = new GameObject("SM64_MARIO");
+                marioObj.transform.position = p.transform.position;
+                Logger.LogMessage($"spawn {p.transform.position.x} {p.transform.position.y} {p.transform.position.z}");
+                SM64InputGame input = marioObj.AddComponent<SM64InputGame>();
+                SM64Mario mario = marioObj.AddComponent<SM64Mario>();
+                if (mario.spawned)
+                {
+                    mario.SetMaterial(material);
+                    RegisterMario(mario);
+
+                   // p.enabled = false;
+                    return true;
+                }
+                else
+                {
+                    Destroy(marioObj);
+                    Logger.LogMessage("Failed to spawn Mario");
+                    return false;
+                }
+            }
+            else
+            {
+                Logger.LogMessage("Failed to find player object, Mario not spawned this attempt");
+                return false;
             }
         }
         public void Update()
@@ -268,6 +329,7 @@ namespace LibSM64
 
         public void UnregisterMario(SM64Mario mario)
         {
+            Logger.LogMessage("Unregistering mario");
             if (_marios.Contains(mario))
                 _marios.Remove(mario);
         }

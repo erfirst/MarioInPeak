@@ -11,12 +11,11 @@
     <Version>0.1.0</Version>
   </PropertyGroup>
   
-<ItemGroup>
-  <Reference Include="sm64-win64">
-    <HintPath>..\..\lib\sm64-win64.dll</HintPath>
-  </Reference>
-  
-</ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\lib\sm64-win64.dll" Link="sm64-win64.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <!--
   How to include thunderstore mods as dependencies via nuget
 

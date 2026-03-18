@@ -24,6 +24,10 @@ source = "../../artifacts/bin/MarioInPeak/release/com.github.erfirst.MarioInPeak
 target = "plugins/"
 
 [[build.copy]]
+source = "../../artifacts/bin/MarioInPeak/release/sm64-win64.dll"
+target = "plugins/"
+
+[[build.copy]]
 source = "../../CHANGELOG.md"
 target = "/"
 

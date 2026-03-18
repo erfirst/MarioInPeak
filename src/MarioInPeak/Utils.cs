@@ -46,11 +46,6 @@ namespace LibSM64
             foreach (var obj in GameObject.FindObjectsOfType<SM64StaticTerrain>())
             {
                 var mc = obj.GetComponent<MeshCollider>();
-                if (mc == null || mc.sharedMesh == null)
-                {
-                    Debug.LogWarning($"SM64StaticTerrain on {obj.name} has no valid MeshCollider/sharedMesh, skipping.");
-                    continue;
-                }
                 transformAndGetSurfaces(surfaces, mc.sharedMesh, obj.SurfaceType, obj.TerrainType, x => mc.transform.TransformPoint(x));
             }
 

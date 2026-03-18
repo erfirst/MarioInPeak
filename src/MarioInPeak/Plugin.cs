@@ -75,91 +75,116 @@ namespace LibSM64
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             Logger.LogInfo($"Scene loaded: [{scene.buildIndex}] {scene.name}");
-
-            // TODO: Replace -1 with PEAK's actual gameplay scene index
-            // Use dnSpy to find it, or log scene.buildIndex on every load to identify it
-            if (scene.buildIndex == -1)
+            if (scene.name.StartsWith("Level_"))
             {
                 RegisterTerrain();
-                SpawnMario();
+                StartCoroutine(SpawnMarioWhenReady());
             }
+        }
+
+        private System.Collections.IEnumerator SpawnMarioWhenReady()
+        {
+            Logger.LogInfo("Waiting for local character...");
+            float timeout = 30f;
+            while (Character.localCharacter == null && timeout > 0)
+            {
+                timeout -= Time.deltaTime;
+                yield return null;
+            }
+
+            if (Character.localCharacter == null)
+            {
+                Logger.LogError("Timed out waiting for local character.");
+                yield break;
+            }
+
+            Logger.LogInfo("Character found, spawning Mario...");
+            SpawnMario();
         }
 
         private void RegisterTerrain()
         {
+            Logger.LogInfo("Finding surfaces...");
             MeshCollider[] meshCols = GameObject.FindObjectsOfType<MeshCollider>();
             BoxCollider[] boxCols = GameObject.FindObjectsOfType<BoxCollider>();
+            Logger.LogInfo($"Found {meshCols.Length} mesh colliders, {boxCols.Length} box colliders");
 
+            int registered = 0;
             for (int i = 0; i < meshCols.Length; i++)
             {
                 MeshCollider c = meshCols[i];
-                if (c.isTrigger) continue;
-
-                GameObject surfaceObj = new GameObject($"SM64_SURFACE_MESH ({c.name})");
-                MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
-                surfaceObj.AddComponent<SM64StaticTerrain>();
-                surfaceObj.transform.rotation = c.transform.rotation;
-                surfaceObj.transform.position = c.transform.position;
-
-                List<int> tris = new List<int>();
-                for (int j = 0; j < c.sharedMesh.subMeshCount; j++)
+                try
                 {
-                    int[] sub = c.sharedMesh.GetTriangles(j);
-                    for (int k = 0; k < sub.Length; k++)
-                        tris.Add(sub[k]);
-                }
+                    if (c == null || c.isTrigger) continue;
+                    if (c.sharedMesh == null) continue;
 
-                Mesh mesh = new Mesh();
-                mesh.name = $"SM64_MESH {i}";
-                mesh.SetVertices(c.sharedMesh.vertices);
-                mesh.SetTriangles(tris, 0);
-                surfaceMesh.sharedMesh = mesh;
+                    List<int> tris = new List<int>();
+                    for (int j = 0; j < c.sharedMesh.subMeshCount; j++)
+                    {
+                        int[] sub = c.sharedMesh.GetTriangles(j);
+                        for (int k = 0; k < sub.Length; k++)
+                            tris.Add(sub[k]);
+                    }
+
+                    if (tris.Count == 0) continue;
+
+                    Mesh mesh = new Mesh();
+                    mesh.name = $"SM64_MESH {i}";
+                    mesh.SetVertices(c.sharedMesh.vertices);
+                    mesh.SetTriangles(tris, 0);
+
+                    GameObject surfaceObj = new GameObject($"SM64_SURFACE_MESH ({c.name})");
+                    MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
+                    surfaceMesh.sharedMesh = mesh;
+                    surfaceObj.AddComponent<SM64StaticTerrain>();
+                    surfaceObj.transform.rotation = c.transform.rotation;
+                    surfaceObj.transform.position = c.transform.position;
+
+                    registered++;
+                }
+                catch (Exception e)
+                {
+                    Logger.LogError($"Error registering MeshCollider [{i}] {c?.name}: {e.Message}");
+                }
             }
 
+            Logger.LogInfo($"Registered {registered} terrain surfaces. Calling RefreshStaticTerrain...");
             RefreshStaticTerrain();
+            Logger.LogInfo("RegisterTerrain complete.");
         }
 
         private void SpawnMario()
         {
-            // TODO: Replace this with finding PEAK's actual player object
-            // e.g. GameObject p = GameObject.Find("Player");
-            // or   GameObject p = GameObject.FindObjectOfType<PlayerController>()?.gameObject;
-            GameObject p = null;
-
-            if (p == null)
+            Logger.LogInfo($"Gonna spawn Mario");
+            Character c = Character.localCharacter;
+            if (c == null)
             {
-                Logger.LogWarning("Player object not found — Mario will not spawn.");
+                Logger.LogWarning("Local character not found — Mario will not spawn.");
                 return;
             }
 
-            Renderer[] renderers = p.GetComponentsInChildren<Renderer>();
+            // Hide the original character renderer
+            SkinnedMeshRenderer smr = c.refs.mainRenderer;
             Material material = null;
 
-            foreach (var r in renderers)
+            if (smr != null)
             {
-                r.forceRenderingOff = true;
-                // TODO: adjust shader name match to whatever PEAK's player uses
-                if (material == null && r.material.shader.name.Contains("Standard"))
-                    material = Material.Instantiate(r.material);
-            }
-
-            if (material != null)
-            {
+                smr.forceRenderingOff = true;
+                material = Material.Instantiate(smr.material);
                 material.SetTexture("_BaseMap", Interop.marioTexture);
                 material.SetColor("_BaseColor", Color.white);
             }
 
             GameObject marioObj = new GameObject("SM64_MARIO");
-            marioObj.transform.position = p.transform.position;
+            marioObj.transform.position = c.transform.position;
 
-            marioObj.AddComponent<SM64InputGame>(); // your SM64InputProvider subclass
+            marioObj.AddComponent<SM64InputGame>();
             SM64Mario mario = marioObj.AddComponent<SM64Mario>();
 
             if (mario.spawned)
             {
                 mario.SetMaterial(material);
                 RegisterMario(mario);
-                p.SetActive(false);
                 Logger.LogInfo("Mario spawned successfully!");
             }
             else
@@ -187,7 +212,18 @@ namespace LibSM64
 
         public void RefreshStaticTerrain()
         {
-            Interop.StaticSurfacesLoad(Utils.GetAllStaticSurfaces());
+            try
+            {
+                Logger.LogInfo("Getting all static surfaces...");
+                var surfaces = Utils.GetAllStaticSurfaces();
+                Logger.LogInfo($"Got {surfaces.Length} surfaces, calling StaticSurfacesLoad...");
+                Interop.StaticSurfacesLoad(surfaces);
+                Logger.LogInfo("StaticSurfacesLoad complete.");
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"RefreshStaticTerrain crashed: {e.Message}\n{e.StackTrace}");
+            }
         }
 
         public void RegisterMario(SM64Mario mario)

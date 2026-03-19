@@ -13,7 +13,7 @@ namespace LibSM64
 
         public abstract Vector3 GetCameraLookDirection();
         public abstract Vector2 GetJoystickAxes();
-        public abstract bool GetButtonHeld( Button button );
+        public abstract bool GetButtonHeld(Button button);
     }
 
     // This will be your class that reads the game's inputs and converts them to Mario inputs.
@@ -31,7 +31,18 @@ namespace LibSM64
             // Check for held button or left analog stick axis in the player's input object.
             // For analog stick: return new Vector2(axis.z, -axis.x);
             // For button held: return -((buttonLeft) ? Vector2.left : (buttonRight) ? Vector2.right : Vector2.zero);
-            return new Vector2(0, 0);
+            float vertical = 0f;
+            if (Input.GetKey(KeyCode.W))
+                vertical = 1f;
+            else if (Input.GetKey(KeyCode.S))
+                vertical = -1f;
+
+            float horizontal = 0f;
+            if (Input.GetKey(KeyCode.A))
+                horizontal = -1f;
+            else if (Input.GetKey(KeyCode.D))
+                horizontal = 1f;
+            return new Vector2(vertical, horizontal).normalized;
         }
 
         public override bool GetButtonHeld(Button button)
@@ -41,16 +52,13 @@ namespace LibSM64
             switch (button)
             {
                 case Button.Jump:
-                    //result = inp.GetButton(JUMP);
-                    break;
+                    return Input.GetKey(KeyCode.Space);
 
                 case Button.Kick:
-                    //result = inp.GetButton(EQUIPMENT);
-                    break;
+                    return Input.GetKey(KeyCode.LeftControl);
 
                 case Button.Stomp:
-                    //result = inp.GetButton(INTERACT);
-                    break;
+                    return Input.GetKey(KeyCode.LeftShift);
             }
 
             return result;

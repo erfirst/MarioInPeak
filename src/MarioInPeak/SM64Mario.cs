@@ -39,18 +39,29 @@ namespace LibSM64
         public bool spawned { get { return marioId != -1; } }
 
         public Interop.SM64MarioState marioState { get { return states[buffIndex]; } }
+        public Vector3 rawM64Position
+        {
+            get
+            {
+                var pos = states[buffIndex].position;
+                if (pos == null || pos.Length < 3)
+                    return Vector3.zero;
+                return new Vector3(pos[0], pos[1], pos[2]);
+            }
+        }
 
         void OnEnable()
         {
             var initPos = transform.position;
-            marioId = Interop.MarioCreate( new Vector3( -initPos.x, initPos.y, initPos.z ) * Interop.SCALE_FACTOR );
+            var spawnM64 = new Vector3( -initPos.x, initPos.y, initPos.z ) * Interop.SCALE_FACTOR;
+            marioId = Interop.MarioCreate( spawnM64 );
 
             if (marioId == -1)
             {
                 Plugin.Logger.LogMessage($"Failed to spawn Mario at {-initPos.x},{initPos.y},{initPos.z}");
                 throw new System.Exception($"Failed to spawn Mario at {-initPos.x},{initPos.y},{initPos.z}");
             }
-            Plugin.Logger.LogMessage($"Spawned Mario {marioId} at {-initPos.x},{initPos.y},{initPos.z}");
+            Plugin.Logger.LogMessage($"Spawned Mario {marioId}. unitySpawn={initPos} m64Spawn={spawnM64}");
 
             inputProvider = GetComponent<SM64InputProvider>();
             if (inputProvider == null)
@@ -263,7 +274,7 @@ namespace LibSM64
 
                 if (fixedTickCount % 180 == 0)
                 {
-                    Plugin.Logger.LogDebug($"Mario {marioId} tick heartbeat: trianglesUsed={trianglesUsed}, worldPos={transform.position}, statePos={states[buffIndex].unityPosition}, velocity={new Vector3(states[buffIndex].velocity[0], states[buffIndex].velocity[1], states[buffIndex].velocity[2])}");
+                    Plugin.Logger.LogDebug($"Mario {marioId} tick heartbeat: trianglesUsed={trianglesUsed}, unityTransformPos={transform.position}, unityStatePos={states[buffIndex].unityPosition}, m64StatePos={rawM64Position}, velocity={new Vector3(states[buffIndex].velocity[0], states[buffIndex].velocity[1], states[buffIndex].velocity[2])}");
                 }
 
                 for (int i = 0; i < 3*Interop.SM64_GEO_MAX_TRIANGLES; ++i)

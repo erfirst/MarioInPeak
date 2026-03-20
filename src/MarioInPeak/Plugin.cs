@@ -239,7 +239,7 @@ namespace LibSM64
 
 
                     // Change this with the shader that you want. You'll have to play around a bit
-                    if (material == null && r[i].material.shader.name.StartsWith("W/Character"))
+                    if (material == null && r[i].material.name.StartsWith("Default"))
                         material = Material.Instantiate<Material>(r[i].material);
                 }
 
@@ -256,7 +256,7 @@ namespace LibSM64
 
 
                 // Uncomment this to create a test SM64 surface at the player's spawn position
-                /*
+                
                 Vector3 P = p.transform.position;
                 P.y -= 2;
                 GameObject surfaceObj = new GameObject("SM64_SURFACE");
@@ -273,21 +273,23 @@ namespace LibSM64
                 );
                 mesh.SetTriangles(new int[] { 0, 1, 2, 3, 4, 5 }, 0);
                 surfaceMesh.sharedMesh = mesh;
+                Logger.LogMessage($"Created test surface at {surfaceObj.transform.position}");
                 RefreshStaticTerrain();
-                */
+          
 
                 GameObject marioObj = new GameObject("SM64_MARIO");
-                marioObj.transform.position = p.transform.position + new Vector3(0, 1, 0);
-                Logger.LogMessage($"spawn {p.transform.position.x} {p.transform.position.y} {p.transform.position.z}");
+                Vector3 spawnPos = p.transform.position;
+                marioObj.transform.position = spawnPos;
+                Logger.LogMessage($"Setting Mario spawn to {marioObj.transform.position}"); 
                 SM64InputGame input = marioObj.AddComponent<SM64InputGame>();
                 SM64Mario mario = marioObj.AddComponent<SM64Mario>();
                 Logger.LogMessage($"Mario object created. hasInput={input != null}, hasMarioComponent={mario != null}, activeInHierarchy={marioObj.activeInHierarchy}");
                 if (mario.spawned)
                 {
-                    mario.SetMaterial(material);
                     RegisterMario(mario);
 
                     // p.enabled = false;
+                    Logger.LogMessage("Mario spawned successfully");
                     return true;
                 }
                 else
@@ -303,22 +305,29 @@ namespace LibSM64
                 return false;
             }
         }
+        private float _debugTimer = 0f;
+
         public void Update()
         {
-            foreach (var o in _surfaceObjects)
-                o.contextUpdate();
+            foreach (var o in _surfaceObjects) o.contextUpdate();
+            foreach (var o in _marios) o.contextUpdate();
 
-            foreach (var o in _marios)
-                o.contextUpdate();
-
-            if (_marios.Count == 0 && !_loggedNoMarioInUpdate)
+            _debugTimer += Time.deltaTime;
+            if (_debugTimer >= 1f)
             {
-                _loggedNoMarioInUpdate = true;
-                Logger.LogWarning("Update loop has zero registered Mario instances");
-            }
-            else if (_marios.Count > 0)
-            {
-                _loggedNoMarioInUpdate = false;
+                _debugTimer = 0f;
+                if (_marios.Count > 0)
+                {
+                    var mario = _marios[0];
+                    Vector3? playerPos = Character.localCharacter != null ? Character.localCharacter.transform.position : (Vector3?)null;
+                    Logger.LogMessage($"Coords compare | playerUnity={(playerPos.HasValue ? playerPos.Value.ToString() : "<null>")} marioUnity={mario.transform.position} marioStateUnity={mario.marioState.unityPosition} marioM64Raw={mario.rawM64Position}");
+                    Logger.LogMessage($"Mario GameObject active: {_marios[0].gameObject.activeSelf}");
+                    Logger.LogMessage($"Camera position: {Camera.main?.transform.position}");
+                }
+                else
+                {
+                    Logger.LogMessage("No marios in list");
+                }
             }
         }
         public void FixedUpdate()

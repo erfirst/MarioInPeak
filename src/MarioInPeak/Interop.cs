@@ -435,7 +435,9 @@ namespace LibSM64
 
         public static int MarioCreate( Vector3 marioPos )
         {
-            return sm64_mario_create( (short)marioPos.x, (short)marioPos.y, (short)marioPos.z );
+            // marioPos is already in libsm64 world units; do not truncate precision.
+            LogInfo($"Creating Mario at m64=({marioPos.x:F3}, {marioPos.y:F3}, {marioPos.z:F3}) unityApprox=({(-marioPos.x / SCALE_FACTOR):F3}, {(marioPos.y / SCALE_FACTOR):F3}, {(marioPos.z / SCALE_FACTOR):F3})");
+            return sm64_mario_create( marioPos.x, marioPos.y, marioPos.z );
         }
 
         public static ushort MarioTick( int marioId, SM64MarioInputs inputs, ref SM64MarioState outState, Vector3[] positionBuffer, Vector3[] normalBuffer, Vector3[] colorBuffer, Vector2[] uvBuffer )

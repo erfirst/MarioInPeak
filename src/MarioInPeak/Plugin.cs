@@ -318,9 +318,7 @@ namespace LibSM64
                 _debugTimer = 0f;
                 if (_marios.Count > 0)
                 {
-                    var mario = _marios[0];
-                    Vector3? playerPos = Character.localCharacter != null ? Character.localCharacter.transform.position : (Vector3?)null;
-                    Logger.LogMessage($"Coords compare | playerUnity={(playerPos.HasValue ? playerPos.Value.ToString() : "<null>")} marioUnity={mario.transform.position} marioStateUnity={mario.marioState.unityPosition} marioM64Raw={mario.rawM64Position}");
+                    Logger.LogMessage($"Mario position: {_marios[0].transform.position}");
                     Logger.LogMessage($"Mario GameObject active: {_marios[0].gameObject.activeSelf}");
                     Logger.LogMessage($"Camera position: {Camera.main?.transform.position}");
                 }

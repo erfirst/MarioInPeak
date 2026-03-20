@@ -429,6 +429,7 @@ namespace LibSM64
 
         public static void StaticSurfacesLoad( SM64Surface[] surfaces )
         {
+            LogInfo($"StaticSurfacesLoad called with {surfaces.Length} surfaces");
             sm64_static_surfaces_load( surfaces, (ulong)surfaces.Length );
         }
 
@@ -437,7 +438,7 @@ namespace LibSM64
             return sm64_mario_create( (short)marioPos.x, (short)marioPos.y, (short)marioPos.z );
         }
 
-        public static void MarioTick( int marioId, SM64MarioInputs inputs, ref SM64MarioState outState, Vector3[] positionBuffer, Vector3[] normalBuffer, Vector3[] colorBuffer, Vector2[] uvBuffer )
+        public static ushort MarioTick( int marioId, SM64MarioInputs inputs, ref SM64MarioState outState, Vector3[] positionBuffer, Vector3[] normalBuffer, Vector3[] colorBuffer, Vector2[] uvBuffer )
         {
             var posHandle = GCHandle.Alloc( positionBuffer, GCHandleType.Pinned );
             var normHandle = GCHandle.Alloc( normalBuffer, GCHandleType.Pinned );
@@ -461,6 +462,8 @@ namespace LibSM64
             normHandle.Free();
             colorHandle.Free();
             uvHandle.Free();
+
+            return buff.numTrianglesUsed;
         }
 
         public static void MarioDelete( int marioId )

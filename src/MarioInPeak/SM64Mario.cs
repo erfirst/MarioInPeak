@@ -27,6 +27,10 @@ namespace LibSM64
         MeshRenderer renderer;
         Mesh marioMesh;
         int marioId;
+        int fixedTickCount;
+        int consecutiveZeroTriangleTicks;
+        bool loggedGeometryReady;
+        bool loggedMissingMaterial;
 
         float tick;
         public Action<SM64Mario> changeActionCallback = null;
@@ -80,6 +84,8 @@ namespace LibSM64
             marioMesh.triangles = Enumerable.Range(0, 3*Interop.SM64_GEO_MAX_TRIANGLES).ToArray();
             meshFilter.sharedMesh = marioMesh;
 
+            Plugin.Logger.LogMessage($"Mario renderer initialized. objectActive={marioRendererObject.activeInHierarchy}, maxTriangles={Interop.SM64_GEO_MAX_TRIANGLES}, vertexBufferSize={lerpPositionBuffer.Length}");
+
             tick = 0f;
         }
 
@@ -102,8 +108,16 @@ namespace LibSM64
         public void SetMaterial(Material m)
         {
             material = m;
+
+            if (material == null)
+            {
+                Plugin.Logger.LogWarning($"Mario {marioId} SetMaterial received null material");
+                return;
+            }
+
             renderer.sharedMaterial = m;
             renderer.sharedMaterial.mainTexture = Interop.marioTexture;
+            Plugin.Logger.LogMessage($"Mario {marioId} material set to '{renderer.sharedMaterial.name}' using shader '{renderer.sharedMaterial.shader.name}'");
         }
 
         public void SetColors(Color32[] colors)
@@ -220,7 +234,37 @@ namespace LibSM64
                 inputs.buttonB = inputProvider.GetButtonHeld( SM64InputProvider.Button.Kick  ) ? (byte)1 : (byte)0;
                 inputs.buttonZ = inputProvider.GetButtonHeld( SM64InputProvider.Button.Stomp ) ? (byte)1 : (byte)0;
 
-                Interop.MarioTick( marioId, inputs, ref states[buffIndex], positionBuffers[buffIndex], normalBuffers[buffIndex], colorBuffer, uvBuffer );
+                ushort trianglesUsed = Interop.MarioTick( marioId, inputs, ref states[buffIndex], positionBuffers[buffIndex], normalBuffers[buffIndex], colorBuffer, uvBuffer );
+                fixedTickCount++;
+
+                if (trianglesUsed == 0)
+                {
+                    consecutiveZeroTriangleTicks++;
+                    if (consecutiveZeroTriangleTicks == 30)
+                    {
+                        Plugin.Logger.LogWarning($"Mario {marioId} produced 0 geometry triangles for 30 consecutive ticks. statePos={states[buffIndex].unityPosition}, action=0x{states[buffIndex].action:X}");
+                    }
+                }
+                else
+                {
+                    if (!loggedGeometryReady)
+                    {
+                        loggedGeometryReady = true;
+                        Plugin.Logger.LogMessage($"Mario {marioId} geometry stream active. trianglesUsed={trianglesUsed}, statePos={states[buffIndex].unityPosition}, action=0x{states[buffIndex].action:X}");
+                    }
+
+                    if (consecutiveZeroTriangleTicks >= 30)
+                    {
+                        Plugin.Logger.LogMessage($"Mario {marioId} geometry recovered after {consecutiveZeroTriangleTicks} zero-triangle ticks");
+                    }
+
+                    consecutiveZeroTriangleTicks = 0;
+                }
+
+                if (fixedTickCount % 180 == 0)
+                {
+                    Plugin.Logger.LogDebug($"Mario {marioId} tick heartbeat: trianglesUsed={trianglesUsed}, worldPos={transform.position}, statePos={states[buffIndex].unityPosition}, velocity={new Vector3(states[buffIndex].velocity[0], states[buffIndex].velocity[1], states[buffIndex].velocity[2])}");
+                }
 
                 for (int i = 0; i < 3*Interop.SM64_GEO_MAX_TRIANGLES; ++i)
                 {
@@ -263,6 +307,12 @@ namespace LibSM64
         {
             float t = tick / (1 / 30f);
             int j = 1 - buffIndex;
+
+            if (renderer != null && renderer.sharedMaterial == null && !loggedMissingMaterial)
+            {
+                loggedMissingMaterial = true;
+                Plugin.Logger.LogWarning($"Mario {marioId} renderer has no shared material during contextUpdate");
+            }
 
             for( int i = 0; i < lerpPositionBuffer.Length; ++i )
             {

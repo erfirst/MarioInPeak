@@ -22,6 +22,8 @@ namespace LibSM64
 
         private Vector3 _lastTerrainUpdatePos = Vector3.zero;
         private const float TERRAIN_UPDATE_DISTANCE = 50f;
+        private bool _loggedNoMarioInUpdate;
+        private bool _loggedNoMarioInFixedUpdate;
 
         public GameObject Player { get; private set; }
         public void Awake()
@@ -82,11 +84,25 @@ namespace LibSM64
             MeshCollider[] meshCols = GameObject.FindObjectsOfType<MeshCollider>();
             BoxCollider[] boxCols = GameObject.FindObjectsOfType<BoxCollider>();
             Logger.LogMessage($"Found {meshCols.Length} mesh colliders and {boxCols.Length} box colliders in the scene");
+            int loadedMeshColliders = 0;
+            int loadedBoxColliders = 0;
+            int skippedTriggerColliders = 0;
+            int skippedMissingMeshColliders = 0;
             for (int i = 0; i < meshCols.Length; i++)
             {
                 MeshCollider c = meshCols[i];
                 if (c.isTrigger)
+                {
+                    skippedTriggerColliders++;
                     continue;
+                }
+
+                if (c.sharedMesh == null)
+                {
+                    skippedMissingMeshColliders++;
+                    Logger.LogWarning($"Skipping mesh collider '{c.name}' because sharedMesh is null");
+                    continue;
+                }
 
                 GameObject surfaceObj = new GameObject($"SM64_SURFACE_MESH ({c.name})");
                 MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
@@ -108,13 +124,21 @@ namespace LibSM64
                 mesh.SetTriangles(tris, 0);
 
                 surfaceMesh.sharedMesh = mesh;
+                loadedMeshColliders++;
+
+                if (loadedMeshColliders <= 3)
+                {
+                    Logger.LogMessage($"Prepared mesh surface '{c.name}' with {c.sharedMesh.vertexCount} vertices and {tris.Count / 3} triangles");
+                }
             }
-            Logger.LogMessage($"Loaded {meshCols.Length} mesh colliders as SM64 surfaces");
             for (var i = 0; i < boxCols.Length; i++)
             {
                 BoxCollider c = boxCols[i];
                 if (c.isTrigger)
+                {
+                    skippedTriggerColliders++;
                     continue;
+                }
 
                 GameObject surfaceObj = new GameObject($"SM64_SURFACE_BOX ({c.name})");
                 MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
@@ -147,14 +171,17 @@ namespace LibSM64
                         */
                     }, 0);
                 surfaceMesh.sharedMesh = mesh;
+                loadedBoxColliders++;
             }
+
+            Logger.LogMessage($"Terrain prep summary: loadedMesh={loadedMeshColliders}, loadedBox={loadedBoxColliders}, skippedTriggers={skippedTriggerColliders}, skippedMissingMesh={skippedMissingMeshColliders}");
             RefreshStaticTerrain();
-            Logger.LogMessage($"Loaded {meshCols.Length} mesh colliders and {boxCols.Length} box colliders as SM64 surfaces");
+            Logger.LogMessage($"Loaded {loadedMeshColliders} mesh colliders and {loadedBoxColliders} box colliders as SM64 surfaces");
         }
 
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            Logger.LogMessage($"{scene.buildIndex} {scene.name}");
+            Logger.LogMessage($"Scene loaded: index={scene.buildIndex}, name='{scene.name}', mode={mode}");
             if (scene.name.StartsWith("Level_"))
             {
                 Logger.LogMessage("Loading SM64 surfaces and spawning Mario");
@@ -201,6 +228,7 @@ namespace LibSM64
                 Player = p.gameObject;
                 Logger.LogMessage("Found player object at position " + p.transform.position);
                 Renderer[] r = p.GetComponentsInChildren<Renderer>();
+                Logger.LogMessage($"Player has {r.Length} renderers in hierarchy");
                 Material material = null;
                 for (int i = 0; i < r.Length; i++)
                 {
@@ -219,6 +247,11 @@ namespace LibSM64
                 {
                     material.SetTexture("_BaseMap", Interop.marioTexture);
                     material.SetColor("_BaseColor", Color.white);
+                    Logger.LogMessage($"Selected material '{material.name}' with shader '{material.shader.name}' for Mario renderer");
+                }
+                else
+                {
+                    Logger.LogWarning("No player material matched shader prefix 'W/Character'; Mario may render with no material");
                 }
 
 
@@ -248,6 +281,7 @@ namespace LibSM64
                 Logger.LogMessage($"spawn {p.transform.position.x} {p.transform.position.y} {p.transform.position.z}");
                 SM64InputGame input = marioObj.AddComponent<SM64InputGame>();
                 SM64Mario mario = marioObj.AddComponent<SM64Mario>();
+                Logger.LogMessage($"Mario object created. hasInput={input != null}, hasMarioComponent={mario != null}, activeInHierarchy={marioObj.activeInHierarchy}");
                 if (mario.spawned)
                 {
                     mario.SetMaterial(material);
@@ -276,6 +310,16 @@ namespace LibSM64
 
             foreach (var o in _marios)
                 o.contextUpdate();
+
+            if (_marios.Count == 0 && !_loggedNoMarioInUpdate)
+            {
+                _loggedNoMarioInUpdate = true;
+                Logger.LogWarning("Update loop has zero registered Mario instances");
+            }
+            else if (_marios.Count > 0)
+            {
+                _loggedNoMarioInUpdate = false;
+            }
         }
         public void FixedUpdate()
         {
@@ -284,6 +328,16 @@ namespace LibSM64
 
             foreach (var o in _marios)
                 o.contextFixedUpdate();
+
+            if (_marios.Count == 0 && !_loggedNoMarioInFixedUpdate)
+            {
+                _loggedNoMarioInFixedUpdate = true;
+                Logger.LogWarning("FixedUpdate loop has zero registered Mario instances");
+            }
+            else if (_marios.Count > 0)
+            {
+                _loggedNoMarioInFixedUpdate = false;
+            }
         }
         public void OnDestroy()
         {
@@ -293,7 +347,14 @@ namespace LibSM64
 
         public void RefreshStaticTerrain()
         {
-            Interop.StaticSurfacesLoad(Utils.GetAllStaticSurfaces());
+            var surfaces = Utils.GetAllStaticSurfaces();
+            Logger.LogMessage($"Refreshing static terrain with {surfaces.Length} SM64 surfaces");
+            if (surfaces.Length == 0)
+            {
+                Logger.LogWarning("No static terrain surfaces were generated; Mario may have nothing to collide with");
+            }
+
+            Interop.StaticSurfacesLoad(surfaces);
         }
 
         public void RegisterMario(SM64Mario mario)

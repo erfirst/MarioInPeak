@@ -19,10 +19,6 @@ namespace LibSM64
         static List<SM64DynamicTerrain> _surfaceObjects = new List<SM64DynamicTerrain>();
         public static Plugin Instance { get; private set; }
         public static new ManualLogSource Logger { get; private set; }
-
-        private Vector3 _lastTerrainUpdatePos = Vector3.zero;
-        private const float TERRAIN_UPDATE_DISTANCE = 50f;
-        private bool _loggedNoMarioInUpdate;
         private bool _loggedNoMarioInFixedUpdate;
 
         public GameObject Player { get; private set; }
@@ -123,13 +119,17 @@ namespace LibSM64
                 mesh.SetVertices(c.sharedMesh.vertices);
                 mesh.SetTriangles(tris, 0);
 
+                if (mesh.isReadable)
+                {
+                    Logger.LogMessage($"Prepared mesh surface '{c.name}' with {mesh.vertexCount} vertices and {tris.Count / 3} triangles");
+                }
+                else
+                {
+                    Logger.LogWarning($"Mesh collider '{c.name}' sharedMesh is not readable; vertices cannot be accessed. SM64 surface will be generated but may have incorrect collisions.");
+                }
                 surfaceMesh.sharedMesh = mesh;
                 loadedMeshColliders++;
 
-                if (loadedMeshColliders <= 3)
-                {
-                    Logger.LogMessage($"Prepared mesh surface '{c.name}' with {c.sharedMesh.vertexCount} vertices and {tris.Count / 3} triangles");
-                }
             }
             for (var i = 0; i < boxCols.Length; i++)
             {
@@ -232,7 +232,7 @@ namespace LibSM64
                 Material material = null;
                 for (int i = 0; i < r.Length; i++)
                 {
-                    Logger.LogMessage($"MAT NAME {i} '{r[i].material.name}' '{r[i].material.shader.name}'");
+                    // Logger.LogMessage($"MAT NAME {i} '{r[i].material.name}' '{r[i].material.shader.name}'");
 
                     // Hide the original character renderer by hiding that material
                     r[i].forceRenderingOff = true;
@@ -242,6 +242,7 @@ namespace LibSM64
                     if (material == null && r[i].material.name.StartsWith("Default"))
                         material = Material.Instantiate<Material>(r[i].material);
                 }
+         
 
                 if (material != null)
                 {
@@ -256,9 +257,9 @@ namespace LibSM64
 
 
                 // Uncomment this to create a test SM64 surface at the player's spawn position
-                
+
                 Vector3 P = p.transform.position;
-                P.y -= 2;
+                P.y += 2;
                 GameObject surfaceObj = new GameObject("SM64_SURFACE");
                 MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
                 surfaceObj.AddComponent<SM64StaticTerrain>();
@@ -275,17 +276,18 @@ namespace LibSM64
                 surfaceMesh.sharedMesh = mesh;
                 Logger.LogMessage($"Created test surface at {surfaceObj.transform.position}");
                 RefreshStaticTerrain();
-          
+
 
                 GameObject marioObj = new GameObject("SM64_MARIO");
                 Vector3 spawnPos = p.transform.position;
-                marioObj.transform.position = spawnPos;
-                Logger.LogMessage($"Setting Mario spawn to {marioObj.transform.position}"); 
+                marioObj.transform.position = spawnPos + new Vector3(0, 5, 0);
+                Logger.LogMessage($"Setting Mario spawn to {marioObj.transform.position}");
                 SM64InputGame input = marioObj.AddComponent<SM64InputGame>();
                 SM64Mario mario = marioObj.AddComponent<SM64Mario>();
                 Logger.LogMessage($"Mario object created. hasInput={input != null}, hasMarioComponent={mario != null}, activeInHierarchy={marioObj.activeInHierarchy}");
                 if (mario.spawned)
                 {
+                    mario.SetMaterial(material);
                     RegisterMario(mario);
 
                     // p.enabled = false;
@@ -305,28 +307,12 @@ namespace LibSM64
                 return false;
             }
         }
-        private float _debugTimer = 0f;
 
         public void Update()
         {
             foreach (var o in _surfaceObjects) o.contextUpdate();
             foreach (var o in _marios) o.contextUpdate();
 
-            _debugTimer += Time.deltaTime;
-            if (_debugTimer >= 1f)
-            {
-                _debugTimer = 0f;
-                if (_marios.Count > 0)
-                {
-                    Logger.LogMessage($"Mario position: {_marios[0].transform.position}");
-                    Logger.LogMessage($"Mario GameObject active: {_marios[0].gameObject.activeSelf}");
-                    Logger.LogMessage($"Camera position: {Camera.main?.transform.position}");
-                }
-                else
-                {
-                    Logger.LogMessage("No marios in list");
-                }
-            }
         }
         public void FixedUpdate()
         {

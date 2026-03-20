@@ -30,7 +30,6 @@ namespace LibSM64
         int fixedTickCount;
         int consecutiveZeroTriangleTicks;
         bool loggedGeometryReady;
-        bool loggedMissingMaterial;
 
         float tick;
         public Action<SM64Mario> changeActionCallback = null;

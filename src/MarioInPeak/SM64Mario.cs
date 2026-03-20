@@ -308,12 +308,6 @@ namespace LibSM64
             float t = tick / (1 / 30f);
             int j = 1 - buffIndex;
 
-            if (renderer != null && renderer.sharedMaterial == null && !loggedMissingMaterial)
-            {
-                loggedMissingMaterial = true;
-                Plugin.Logger.LogWarning($"Mario {marioId} renderer has no shared material during contextUpdate");
-            }
-
             for( int i = 0; i < lerpPositionBuffer.Length; ++i )
             {
                 lerpPositionBuffer[i] = Vector3.LerpUnclamped( positionBuffers[buffIndex][i], positionBuffers[j][i], t );

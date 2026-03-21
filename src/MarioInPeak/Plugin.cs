@@ -21,6 +21,10 @@ namespace LibSM64
         public static new ManualLogSource Logger { get; private set; }
         private bool _loggedNoMarioInFixedUpdate;
 
+        private GameObject _dynamicTerrainObj;
+        private MeshCollider _dynamicTerrainMesh;
+        private Vector3 _lastTerrainUpdatePos = Vector3.zero;
+        private const float TERRAIN_UPDATE_DISTANCE = 30f;
         public GameObject Player { get; private set; }
         public void Awake()
         {
@@ -179,20 +183,74 @@ namespace LibSM64
             Logger.LogMessage($"Loaded {loadedMeshColliders} mesh colliders and {loadedBoxColliders} box colliders as SM64 surfaces");
         }
 
+        private void BuildTerrainFromRaycasts(Vector3 center)
+        {
+            int gridSize = 24;
+            float spacing = 3f;
+            float offset = (gridSize / 2f) * spacing;
+
+            List<Vector3> verts = new List<Vector3>();
+            List<int> tris = new List<int>();
+
+            float[,] heights = new float[gridSize + 1, gridSize + 1];
+
+            for (int x = 0; x <= gridSize; x++)
+            {
+                for (int z = 0; z <= gridSize; z++)
+                {
+                    Vector3 origin = new Vector3(
+                        center.x - offset + x * spacing,
+                        center.y + 50f,
+                        center.z - offset + z * spacing
+                    );
+
+                    if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 300f))
+                        heights[x, z] = hit.point.y;
+                    else
+                        heights[x, z] = center.y - 10f;
+
+                    verts.Add(new Vector3(origin.x, heights[x, z], origin.z));
+                }
+            }
+
+            for (int x = 0; x < gridSize; x++)
+            {
+                for (int z = 0; z < gridSize; z++)
+                {
+                    int i = x * (gridSize + 1) + z;
+                    tris.Add(i);
+                    tris.Add(i + 1);
+                    tris.Add(i + gridSize + 1);
+                    tris.Add(i + 1);
+                    tris.Add(i + gridSize + 2);
+                    tris.Add(i + gridSize + 1);
+                }
+            }
+
+            Mesh mesh = new Mesh();
+            mesh.name = "SM64_RAYCAST_TERRAIN";
+            mesh.SetVertices(verts);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();
+
+            // Create or reuse the terrain object
+            if (_dynamicTerrainObj == null)
+            {
+                _dynamicTerrainObj = new GameObject("SM64_RAYCAST_TERRAIN");
+                _dynamicTerrainMesh = _dynamicTerrainObj.AddComponent<MeshCollider>();
+                _dynamicTerrainObj.AddComponent<SM64StaticTerrain>();
+                DontDestroyOnLoad(_dynamicTerrainObj);
+            }
+
+            _dynamicTerrainMesh.sharedMesh = mesh;
+            RefreshStaticTerrain();
+            Logger.LogMessage($"Rebuilt raycast terrain at {center}, {verts.Count} verts");
+        }
         public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            Logger.LogMessage($"Scene loaded: index={scene.buildIndex}, name='{scene.name}', mode={mode}");
+            Logger.LogMessage($"Scene loaded: {scene.name}");
             if (scene.name.StartsWith("Level_"))
-            {
-                Logger.LogMessage("Loading SM64 surfaces and spawning Mario");
-                registerTerrain();
                 StartCoroutine(SpawnMarioWithRetry(10, 2f));
-
-            }
-            else
-            {
-                Logger.LogMessage("Not spawning Mario in this scene");
-            }
         }
         private System.Collections.IEnumerator SpawnMarioWithRetry(int maxAttempts, float delaySeconds)
         {
@@ -242,7 +300,7 @@ namespace LibSM64
                     if (material == null && r[i].material.name.StartsWith("Default"))
                         material = Material.Instantiate<Material>(r[i].material);
                 }
-         
+
 
                 if (material != null)
                 {
@@ -258,25 +316,29 @@ namespace LibSM64
 
                 // Uncomment this to create a test SM64 surface at the player's spawn position
 
-                Vector3 P = p.transform.position;
-                P.y += 2;
-                GameObject surfaceObj = new GameObject("SM64_SURFACE");
-                MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
-                surfaceObj.AddComponent<SM64StaticTerrain>();
-                Mesh mesh = new Mesh();
-                mesh.name = "TEST_MESH";
-                mesh.SetVertices(
-                    new Vector3[]
-                    {
-                        new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x+128,P.y,P.z-128),
-                        new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x-128,P.y,P.z+128),
-                    }
-                );
-                mesh.SetTriangles(new int[] { 0, 1, 2, 3, 4, 5 }, 0);
-                surfaceMesh.sharedMesh = mesh;
-                Logger.LogMessage($"Created test surface at {surfaceObj.transform.position}");
-                RefreshStaticTerrain();
+                // Vector3 P = p.transform.position;
+                // P.y += 2;
+                // GameObject surfaceObj = new GameObject("SM64_SURFACE");
+                // MeshCollider surfaceMesh = surfaceObj.AddComponent<MeshCollider>();
+                // surfaceObj.AddComponent<SM64StaticTerrain>();
+                // Mesh mesh = new Mesh();
+                // mesh.name = "TEST_MESH";
+                // mesh.SetVertices(
+                //     new Vector3[]
+                //     {
+                //         new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x+128,P.y,P.z-128),
+                //         new Vector3(P.x+128,P.y,P.z+128), new Vector3(P.x-128,P.y,P.z-128), new Vector3(P.x-128,P.y,P.z+128),
+                //     }
+                // );
+                // mesh.SetTriangles(new int[] { 0, 1, 2, 3, 4, 5 }, 0);
+                // surfaceMesh.sharedMesh = mesh;
+                // Logger.LogMessage($"Created test surface at {surfaceObj.transform.position}");
+                // RefreshStaticTerrain();
 
+
+
+                // Replace the commented out test surface block with this:
+                BuildTerrainFromRaycasts(p.transform.position);
 
                 GameObject marioObj = new GameObject("SM64_MARIO");
                 Vector3 spawnPos = p.transform.position;
@@ -312,6 +374,15 @@ namespace LibSM64
         {
             foreach (var o in _surfaceObjects) o.contextUpdate();
             foreach (var o in _marios) o.contextUpdate();
+            if (_marios.Count > 0)
+            {
+                Vector3 marioPos = _marios[0].transform.position;
+                if (Vector3.Distance(marioPos, _lastTerrainUpdatePos) > TERRAIN_UPDATE_DISTANCE)
+                {
+                    _lastTerrainUpdatePos = marioPos;
+                    BuildTerrainFromRaycasts(marioPos);
+                }
+            }
 
         }
         public void FixedUpdate()
